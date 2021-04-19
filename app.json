@@ -1,0 +1,6 @@
+{
+  "name": "dotnet-template",
+  "description": ".NET Core webapp with user identity, entityframework.core, signalr",
+  "repository": "https://github.com/amir734jj/dotnet-template",
+  "keywords": ["csharp", "dotnetcore"]
+}
