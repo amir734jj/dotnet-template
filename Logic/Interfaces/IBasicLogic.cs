@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Models.Interfaces;
 
 namespace Logic.Interfaces
 {
-    public interface IBasicLogic<T> where T: IEntity
+    public interface IBasicLogic<T>
     {
         Task<IEnumerable<T>> GetAll();
 

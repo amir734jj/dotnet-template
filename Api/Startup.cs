@@ -12,14 +12,12 @@ using Dal;
 using Dal.Configs;
 using Dal.Interfaces;
 using Dal.ServiceApi;
-using Dal.Utilities;
 using EFCache;
 using EFCache.Redis;
 using EfCoreRepository.Extensions;
 using Logic.Providers;
 using Logic.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -148,10 +146,8 @@ namespace Api
                     new OpenApiSecurityScheme
                     {
                         Description = "JWT Authorization header using the Bearer scheme.",
-                        Type = SecuritySchemeType
-                            .Http, // We set the scheme type to http since we're using bearer authentication
-                        Scheme =
-                            "bearer" // The name of the HTTP Authorization scheme to be used in the Authorization header. In this case "bearer".
+                        Type = SecuritySchemeType.Http, // We set the scheme type to http since we're using bearer authentication
+                        Scheme = "bearer" // The name of the HTTP Authorization scheme to be used in the Authorization header. In this case "bearer".
                     });
             });
 
@@ -253,7 +249,7 @@ namespace Api
             services.Configure<RecaptchaSettings>(_configuration.GetSection("RecaptchaSettings"));
             services.AddTransient<IRecaptchaService, RecaptchaService>();
 
-            services.AddEfRepository<EntityDbContext>(x => x.Profiles(Assembly.Load("Dal")));
+            services.AddEfRepository<EntityDbContext>(x => x.Profile(Assembly.Load("Dal")));
 
             var container = new Container(config =>
             {

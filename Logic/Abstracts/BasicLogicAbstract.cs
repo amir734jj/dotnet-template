@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Dal.Interfaces;
 using EfCoreRepository.Interfaces;
 using Logic.Interfaces;
-using Models.Interfaces;
 
 namespace Logic.Abstracts
 {
-    public abstract class BasicLogicAbstract<T> : IBasicLogic<T> where T: class, IEntity
+    public abstract class BasicLogicAbstract<T> : IBasicLogic<T> where T: class
     {
         /// <summary>
         /// Returns instance of basic DAL

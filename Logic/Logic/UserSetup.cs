@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using Dal;
-using Dal.Utilities;
 using Logic.Interfaces;
 
 namespace Logic.Logic

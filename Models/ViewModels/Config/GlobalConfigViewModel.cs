@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace Models.ViewModels.Config
 {
     public class GlobalConfigViewModel

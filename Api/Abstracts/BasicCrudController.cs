@@ -2,12 +2,11 @@
 using System.Threading.Tasks;
 using Logic.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Models.Interfaces;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Api.Abstracts
 {
-    public abstract class BasicCrudController<T> : Controller where T : IEntity
+    public abstract class BasicCrudController<T> : Controller
     {
         [NonAction]
         protected abstract Task<IBasicLogic<T>> BasicLogic();

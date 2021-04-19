@@ -1,15 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
-using Models.Interfaces;
 
 namespace Models.Models
 {
     /// <summary>
     /// Website user model
     /// </summary>
-    public class User : IdentityUser<int>, IEntity
+    public class User : IdentityUser<int>
     {
         public string Name { get; set; }
         
