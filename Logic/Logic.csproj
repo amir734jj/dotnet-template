@@ -9,7 +9,6 @@
   
   <ItemGroup>
     <PackageReference Include="HashLib" Version="2.0.1" />
-    <PackageReference Include="structuremap" Version="4.7.1" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
   </ItemGroup>
 </Project>

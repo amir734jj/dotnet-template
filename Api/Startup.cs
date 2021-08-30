@@ -15,6 +15,8 @@ using Dal.ServiceApi;
 using EFCache;
 using EFCache.Redis;
 using EfCoreRepository.Extensions;
+using Lamar;
+using LiteDB;
 using Logic.Providers;
 using Logic.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -40,7 +42,6 @@ using Models.Models;
 using Newtonsoft.Json;
 using reCAPTCHA.AspNetCore;
 using StackExchange.Redis;
-using StructureMap;
 using static Dal.Utilities.ConnectionStringUtility;
 
 namespace Api
@@ -76,17 +77,6 @@ namespace Api
         /// <returns></returns>
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
-            // services.AddMiniProfiler(opt =>
-            // {
-            //     // opt.RouteBasePath = "/profiler";
-            //     opt.ShouldProfile = _ => true;
-            //     opt.ShowControls = true;
-            //     opt.StackMaxLength = short.MaxValue;
-            //     opt.PopupStartHidden = false;
-            //     opt.PopupShowTrivial = true;
-            //     opt.PopupShowTimeWithChildren = true;
-            // });
-
             services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
             // If environment is localhost, then enable CORS policy, otherwise no cross-origin access
@@ -258,7 +248,8 @@ namespace Api
                 // If environment is localhost then use mock email service
                 if (_env.IsDevelopment())
                 {
-                    config.For<IS3Service>().Use(new S3Service()).Singleton();
+                    config.For<ILiteDatabase>().Use(new LiteDatabase("file.litedb")).Singleton();
+                    config.For<IFileService>().Use<LiteDbFileService>();
                 }
                 else
                 {
@@ -275,11 +266,11 @@ namespace Api
                     var credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
 
                     // Create S3 client
-                    config.For<IAmazonS3>().Use(() => new AmazonS3Client(credentials, RegionEndpoint.USEast1));
+                    config.For<IAmazonS3>().Use(_ => new AmazonS3Client(credentials, RegionEndpoint.USEast1));
                     config.For<S3ServiceConfig>().Use(new S3ServiceConfig(bucketName, prefix));
 
-                    config.For<IS3Service>().Use(ctx => new S3Service(
-                        ctx.GetInstance<ILogger<S3Service>>(),
+                    config.For<IFileService>().Use(ctx => new S3FileService(
+                        ctx.GetInstance<ILogger<S3FileService>>(),
                         ctx.GetInstance<IAmazonS3>(),
                         ctx.GetInstance<S3ServiceConfig>()
                     ));
@@ -294,9 +285,6 @@ namespace Api
                     _.Assembly("Dal");
                     _.WithDefaultConventions();
                 });
-
-                // Populate the container using the service collection
-                config.Populate(services);
             });
 
             container.AssertConfigurationIsValid();

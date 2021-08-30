@@ -7,7 +7,7 @@ namespace Api.Controllers
     [ApiExplorerSettings(IgnoreApi = true)]
     [AllowAnonymous]
     [Route("")]
-    public class HomeController : Controller
+    public class HealthController : Controller
     {
         /// <summary>
         /// Home page
@@ -17,7 +17,10 @@ namespace Api.Controllers
         [Route("")]
         public async Task<IActionResult> Index()
         {
-            return View();
+            return Ok(new
+            {
+                IpAddress = HttpContext.Connection.RemoteIpAddress
+            });
         }
     }
 }

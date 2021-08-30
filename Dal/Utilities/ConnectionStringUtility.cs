@@ -1,5 +1,4 @@
-﻿using Dal.Extensions;
-using Models.Utilities;
+﻿using System;
 using Npgsql;
 using StackExchange.Redis;
 
@@ -9,7 +8,12 @@ namespace Dal.Utilities
     {
         public static string ConnectionStringUrlToRedisResource(string connectionStringUrl)
         {
-            var (uri, _) = UrlUtility.UrlToResource(connectionStringUrl);
+            var result = Uri.TryCreate(connectionStringUrl, UriKind.Absolute, out var uri);
+
+            if (!result)
+            {
+                throw new ArgumentException("Failed to parse Redis connection string");
+            }
 
             var userInfo = uri.UserInfo.Split(':');
             var configurationOptions = new ConfigurationOptions
@@ -22,8 +26,7 @@ namespace Dal.Utilities
 
             return configurationOptions.ToString();
         }
-        
-        
+
         /// <summary>
         /// Converts connection string url to resource
         /// </summary>
@@ -31,20 +34,21 @@ namespace Dal.Utilities
         /// <returns></returns>
         public static string ConnectionStringUrlToPgResource(string connectionStringUrl)
         {
-            var (_, table) = UrlUtility.UrlToResource(connectionStringUrl);
+            var result = Uri.TryCreate(connectionStringUrl, UriKind.Absolute, out var uri);
 
-            if (!table.ContainKeys("Host", "Username", "Password", "Database", "ApplicationName"))
+            if (!result)
             {
-                return string.Empty;
+                throw new ArgumentException("Failed to parse postgres connection string");
             }
 
+            var userInfo = uri.UserInfo.Split(':');
             var connectionStringBuilder = new NpgsqlConnectionStringBuilder
             {
-                Host = table["Host"],
-                Username = table["Username"],
-                Password = table["Password"],
-                Database = table["Database"],
-                ApplicationName = table["ApplicationName"],
+                Host = uri.Host,
+                Username = userInfo[0],
+                Password = userInfo[1],
+                Database = uri.Segments[1],
+                ApplicationName = Environment.MachineName,
                 SslMode = SslMode.Require,
                 TrustServerCertificate = true,
                 Pooling = true,
