@@ -138,6 +138,37 @@ namespace Dal.ServiceApi
             }
         }
 
+        public async Task<GenericFileServiceResponse> Delete(string keyName)
+        {
+            try
+            {
+                // Build the request with the bucket name and the keyName (name of the file)
+                var request = new DeleteObjectRequest
+                {
+                    BucketName = _s3ServiceConfig.BucketName,
+                    Key = $"{_s3ServiceConfig.Prefix}/{keyName}"
+                };
+
+                var response = await _client.DeleteObjectAsync(request);
+                return new GenericFileServiceResponse(response.HttpStatusCode,
+                    $"Deleting S3 object with key: {keyName}");
+            }
+            // Catch specific amazon errors
+            catch (AmazonS3Exception e)
+            {
+                _logger.LogError(e, "Failed uploading from S3 with S3 specific exception");
+                
+                return new GenericFileServiceResponse(e.StatusCode, e.Message);
+            }
+            // Catch other errors
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Failed downloading from S3 with generic exception");
+                
+                return new GenericFileServiceResponse(HttpStatusCode.BadRequest, e.Message);
+            }
+        }
+
         public async Task<List<string>> List()
         {
             var request = new ListObjectsV2Request

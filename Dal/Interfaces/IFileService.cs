@@ -13,6 +13,8 @@ namespace Dal.Interfaces
             IDictionary<string, string> metadata);
 
         Task<DownloadFileServiceResponse> Download(string keyName);
+        
+        Task<GenericFileServiceResponse> Delete(string keyName);
 
         Task<List<string>> List();
     }

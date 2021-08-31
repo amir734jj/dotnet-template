@@ -51,6 +51,13 @@ namespace Dal.ServiceApi
                 contentType, fileName);
         }
 
+        public async Task<GenericFileServiceResponse> Delete(string keyName)
+        {
+            var status = _storage.Delete(keyName) ? HttpStatusCode.OK : HttpStatusCode.BadRequest;
+
+            return new GenericFileServiceResponse(status, $"Deleting a file with key: {keyName}");
+        }
+
         public async Task<List<string>> List()
         {
             return _storage.FindAll().Select(x => x.Id).ToList();
