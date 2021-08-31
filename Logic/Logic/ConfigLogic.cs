@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
-using Dal.Extensions;
 using Dal.Interfaces;
 using Logic.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -45,14 +43,14 @@ namespace Logic.Logic
             }
         }
 
-        public GlobalConfigViewModel ResolveGlobalConfig()
+        public GlobalConfigViewModel GetResolveGlobalConfig()
         {
             return ToViewModel();
         }
 
         public async Task UpdateGlobalConfig(Func<GlobalConfigViewModel, GlobalConfigViewModel> update)
         {
-            var re = update(ResolveGlobalConfig());
+            var re = update(GetResolveGlobalConfig());
             
             await SetGlobalConfig(re);
         }
@@ -65,7 +63,10 @@ namespace Logic.Logic
             {
                 _logger.LogInformation("Successfully fetched the config from S3");
 
-                UpdateGlobalConfigs(response.Data.Deserialize<GlobalConfigViewModel>());
+                var json = System.Text.Encoding.Default.GetString(response.Data.ToArray());
+                var config = JsonConvert.DeserializeObject<GlobalConfigViewModel>(json);
+                
+                UpdateGlobalConfigs(config);
             }
             else
             {

@@ -6,7 +6,7 @@ namespace Models.ViewModels.S3
 {
     public class DownloadFileServiceResponse : GenericFileServiceResponse
     {
-        public Stream Data { get; }
+        public MemoryStream Data { get; }
         
         public IReadOnlyDictionary<string, string> MetaData { get; }
         
@@ -18,7 +18,7 @@ namespace Models.ViewModels.S3
         {
         }
 
-        public DownloadFileServiceResponse(HttpStatusCode status, string message, Stream data, IReadOnlyDictionary<string, string> metaData, string contentType, string name) : base(status, message)
+        public DownloadFileServiceResponse(HttpStatusCode status, string message, MemoryStream data, IReadOnlyDictionary<string, string> metaData, string contentType, string name) : base(status, message)
         {
             Data = data;
             MetaData = metaData;

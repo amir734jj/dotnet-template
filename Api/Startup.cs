@@ -75,7 +75,7 @@ namespace Api
         /// </summary>
         /// <param name="services"></param>
         /// <returns></returns>
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureContainer(ServiceRegistry services)
         {
             services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
@@ -241,55 +241,48 @@ namespace Api
 
             services.AddEfRepository<EntityDbContext>(x => x.Profile(Assembly.Load("Dal")));
 
-            var container = new Container(config =>
+            services.For<JwtSettings>().Use(jwtSetting).Singleton();
+
+            // If environment is localhost then use mock email service
+            if (_env.IsDevelopment())
             {
-                config.For<JwtSettings>().Use(jwtSetting).Singleton();
+                services.For<ILiteDatabase>().Use(new LiteDatabase("file.litedb")).Singleton();
+                services.For<IFileService>().Use<LiteDbFileService>();
+            }
+            else
+            {
+                var (accessKeyId, secretAccessKey, url) = (
+                    _configuration.GetRequiredValue<string>("CLOUDCUBE_ACCESS_KEY_ID"),
+                    _configuration.GetRequiredValue<string>("CLOUDCUBE_SECRET_ACCESS_KEY"),
+                    _configuration.GetRequiredValue<string>("CLOUDCUBE_URL")
+                );
 
-                // If environment is localhost then use mock email service
-                if (_env.IsDevelopment())
-                {
-                    config.For<ILiteDatabase>().Use(new LiteDatabase("file.litedb")).Singleton();
-                    config.For<IFileService>().Use<LiteDbFileService>();
-                }
-                else
-                {
-                    var (accessKeyId, secretAccessKey, url) = (
-                        _configuration.GetRequiredValue<string>("CLOUDCUBE_ACCESS_KEY_ID"),
-                        _configuration.GetRequiredValue<string>("CLOUDCUBE_SECRET_ACCESS_KEY"),
-                        _configuration.GetRequiredValue<string>("CLOUDCUBE_URL")
-                    );
+                var prefix = new Uri(url).Segments.GetValue(1)?.ToString();
+                const string bucketName = "cloud-cube";
 
-                    var prefix = new Uri(url).Segments.GetValue(1)?.ToString();
-                    const string bucketName = "cloud-cube";
+                // Generally bad practice
+                var credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
 
-                    // Generally bad practice
-                    var credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
+                // Create S3 client
+                services.For<IAmazonS3>().Use(_ => new AmazonS3Client(credentials, RegionEndpoint.USEast1));
+                services.For<S3ServiceConfig>().Use(new S3ServiceConfig(bucketName, prefix));
 
-                    // Create S3 client
-                    config.For<IAmazonS3>().Use(_ => new AmazonS3Client(credentials, RegionEndpoint.USEast1));
-                    config.For<S3ServiceConfig>().Use(new S3ServiceConfig(bucketName, prefix));
+                services.For<IFileService>().Use(ctx => new S3FileService(
+                    ctx.GetInstance<ILogger<S3FileService>>(),
+                    ctx.GetInstance<IAmazonS3>(),
+                    ctx.GetInstance<S3ServiceConfig>()
+                ));
+            }
 
-                    config.For<IFileService>().Use(ctx => new S3FileService(
-                        ctx.GetInstance<ILogger<S3FileService>>(),
-                        ctx.GetInstance<IAmazonS3>(),
-                        ctx.GetInstance<S3ServiceConfig>()
-                    ));
-                }
-
-                // Register stuff in container, using the StructureMap APIs...
-                config.Scan(_ =>
-                {
-                    _.AssemblyContainingType(typeof(Startup));
-                    _.Assembly("Api");
-                    _.Assembly("Logic");
-                    _.Assembly("Dal");
-                    _.WithDefaultConventions();
-                });
+            // Register stuff in container, using the StructureMap APIs...
+            services.Scan(_ =>
+            {
+                _.AssemblyContainingType(typeof(Startup));
+                _.Assembly("Api");
+                _.Assembly("Logic");
+                _.Assembly("Dal");
+                _.WithDefaultConventions();
             });
-
-            container.AssertConfigurationIsValid();
-
-            return container.GetInstance<IServiceProvider>();
         }
 
         /// <summary>
@@ -298,8 +291,6 @@ namespace Api
         /// <param name="app"></param>
         public void Configure(IApplicationBuilder app)
         {
-            //app.UseMiniProfiler();
-
             app.UseCors("CorsPolicy");
 
             app.UseResponseCompression();

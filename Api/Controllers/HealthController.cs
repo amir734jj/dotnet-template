@@ -1,12 +1,11 @@
-﻿using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers
 {
     [ApiExplorerSettings(IgnoreApi = true)]
     [AllowAnonymous]
-    [Route("")]
+    [Route("health")]
     public class HealthController : Controller
     {
         /// <summary>
@@ -15,11 +14,12 @@ namespace Api.Controllers
         /// <returns></returns>
         [HttpGet]
         [Route("")]
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
             return Ok(new
             {
-                IpAddress = HttpContext.Connection.RemoteIpAddress
+                RemoteIpAddress = HttpContext.Connection.RemoteIpAddress.ToString(),
+                LocalIpAddress = HttpContext.Connection.LocalIpAddress.ToString(),
             });
         }
     }

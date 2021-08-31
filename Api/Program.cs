@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using Lamar.Microsoft.DependencyInjection;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,6 +11,7 @@ namespace Api
         public static void Main(string[] args)
         {
             var host = WebHost.CreateDefaultBuilder(args)
+                .UseLamar()
                 .UseKestrel()
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseIISIntegration()
