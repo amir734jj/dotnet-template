@@ -4,8 +4,8 @@ using System.Net;
 using System.Threading.Tasks;
 using Dal.Interfaces;
 using Logic.Interfaces;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Internal;
+using Models.ViewModels.Api;
 
 namespace Logic.Logic
 {
@@ -18,31 +18,38 @@ namespace Logic.Logic
             _fileService = fileService;
         }
         
-        public async Task<string> Upload(IFormFile formFile)
+        public async Task<string> Upload(UploadViewModel file)
         {
             // Randomly assign a key!
             var key = Guid.NewGuid().ToString();
 
-            await _fileService.Upload(key, formFile.FileName, formFile.ContentType, formFile.OpenReadStream(), new Dictionary<string, string>());
+            await _fileService.Upload(key, file.File.Name, file.File.ContentType, file.File.OpenReadStream(), new Dictionary<string, string>
+            {
+                ["Description"] = file.Description
+            });
 
             return key;
         }
 
-        public async Task<IFormFile> Download(string id)
+        public async Task<UploadViewModel> Download(Guid id)
         {
-            var response = await _fileService.Download(id);
+            var response = await _fileService.Download(id.ToString());
 
-            var formFile = new FormFile(response.Data, 0, response.Data.Length, id, response.Name)
+            var formFile = new FormFile(response.Data, 0, response.Data.Length, id.ToString(), response.Name)
             {
                 ContentType = response.ContentType
             };
 
-            return formFile;
+            return new UploadViewModel
+            {
+                File = formFile,
+                Description = response.MetaData["Description"]
+            };
         }
 
-        public async Task<bool> Delete(string keyName)
+        public async Task<bool> Delete(Guid id)
         {
-            var response = await _fileService.Delete(keyName);
+            var response = await _fileService.Delete(id.ToString());
 
             return response.Status != HttpStatusCode.BadRequest;
         }

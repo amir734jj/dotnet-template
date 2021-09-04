@@ -1,17 +1,15 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Models.ViewModels.S3;
+using Models.ViewModels.Api;
 
 namespace Logic.Interfaces
 {
     public interface IImageUploadLogic
     {
-        Task<string> Upload(IFormFile formFile);
+        Task<string> Upload(UploadViewModel file);
 
-        Task<IFormFile> Download(string id);
+        Task<UploadViewModel> Download(Guid id);
 
-        Task<bool> Delete(string id);
+        Task<bool> Delete(Guid id);
     }
 }
