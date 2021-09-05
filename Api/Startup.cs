@@ -148,12 +148,6 @@ namespace Api
                     // Not need to have https
                     x.RequireHttpsPermanent = false;
 
-                    // Allow anonymous for localhost
-                    if (_env.IsDevelopment())
-                    {
-                        x.Filters.Add<AllowAnonymousFilter>();
-                    }
-
                     // Exception filter attribute
                     x.Filters.Add<ExceptionFilterAttribute>();
                 }).AddNewtonsoftJson(x =>

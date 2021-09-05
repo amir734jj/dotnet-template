@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using Api.Attributes;
 using Api.Configs;
 using Logic.Interfaces;
 using Microsoft.AspNetCore.Identity;
@@ -22,8 +23,6 @@ namespace Api.Controllers.Api
     [Route("api/[controller]")]
     public class AccountController : Controller
     {
-        private const string SetupUserTempDataKey = nameof(SetupUserTempDataKey);
-
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signManager;
         private readonly JwtSettings _jwtSettings;
@@ -39,27 +38,29 @@ namespace Api.Controllers.Api
             _userSetup = userSetup;
             _userLogic = userLogic;
         }
-
+        
+        [Authorize]
         [HttpGet]
-        [Route("")]
+        [Route("amir")]
         [SwaggerOperation("AccountInfo")]
         public async Task<IActionResult> Index()
         {
-            if (User.Identity.IsAuthenticated)
-            {
-                var user = await _userManager.FindByEmailAsync(User.Identity.Name);
+            var user = await _userManager.FindByNameAsync(User.Identity.Name);
                 
-                return Ok(user);
-            }
-
-            return Ok(new { });
+            return Ok(user);
         }
 
+        [DisallowAuthorized]
         [HttpPost]
         [Route("Register")]
         [SwaggerOperation("Register")]
         public async Task<IActionResult> Register([FromBody] RegisterViewModel registerViewModel)
         {
+            if (User.Identity.IsAuthenticated)
+            {
+                return BadRequest("Please logout before registering a new user.");
+            }
+            
             var user = new User
             {
                 Name = registerViewModel.Name,
@@ -75,24 +76,14 @@ namespace Api.Controllers.Api
 
             if (identityResults.All(x => x.Succeeded))
             {
-                return RedirectToAction("Setup", new {userId = user.Id});
+                await _userSetup.Setup(user.Id);
             }
 
             return BadRequest(new ErrorViewModel(new[] {"Failed to register!"}
                 .Concat(identityResults.SelectMany(x => x.Errors.Select(y => y.Description))).ToArray()));
         }
 
-        [HttpGet]
-        [Route("Setup/{userId}")]
-        [SwaggerOperation("Setup")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Setup([FromRoute] int userId)
-        {
-            await _userSetup.Setup(userId);
-
-            return Ok("Successfully registered and setup user");
-        }
-
+        [DisallowAuthorized]
         [HttpPost]
         [Route("Login")]
         [SwaggerOperation("Login")]
@@ -111,15 +102,9 @@ namespace Api.Controllers.Api
             // Set LastLoginTime
             await _userLogic.Update(user.Id, x => x.LastLoginTime = DateTimeOffset.Now);
 
-            var (token, expires) = ResolveToken(user);
+            var token = ResolveToken(user);
 
-            return Ok(new
-            {
-                token,
-                user.Name,
-                user.Email,
-                expires
-            });
+            return Ok(token);
         }
 
         [Authorize]
@@ -141,15 +126,9 @@ namespace Api.Controllers.Api
         {
             var user = await _userManager.FindByEmailAsync(User.Identity.Name);
                 
-            var (token, expires) = ResolveToken(user);
+            var token = ResolveToken(user);
 
-            return Ok(new
-            {
-                token,
-                user.Name,
-                user.Email,
-                expires
-            });
+            return Ok(token);
         }
 
         /// <summary>
@@ -157,7 +136,7 @@ namespace Api.Controllers.Api
         /// </summary>
         /// <param name="user"></param>
         /// <returns></returns>
-        private (string, DateTime) ResolveToken(User user)
+        private string ResolveToken(User user)
         {
             // Generate and issue a JWT token
             var claims = new[]
@@ -181,7 +160,7 @@ namespace Api.Controllers.Api
                 expires: expires,
                 signingCredentials: credentials);
 
-            return (new JwtSecurityTokenHandler().WriteToken(token), expires);
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

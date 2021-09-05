@@ -3,9 +3,9 @@ using Models.Enums;
 
 namespace Api.Attributes
 {
-    public class RoleAuthorizeAttribute : AuthorizeAttribute
+    public class RoleAuthorizedAttribute : AuthorizeAttribute
     {
-        public RoleAuthorizeAttribute(params RoleEnum[] roles)
+        public RoleAuthorizedAttribute(params RoleEnum[] roles)
         {
             Roles = string.Join(',', roles);
         }
