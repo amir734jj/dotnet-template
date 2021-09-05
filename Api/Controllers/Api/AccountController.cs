@@ -15,25 +15,28 @@ using Models.Models;
 using Models.ViewModels.Identities;
 using Swashbuckle.AspNetCore.Annotations;
 using Microsoft.AspNetCore.Authorization;
+using Models.Enums;
 using Models.ViewModels.Api;
 
 namespace Api.Controllers.Api
 {
-    [AllowAnonymous]
     [Route("api/[controller]")]
     public class AccountController : Controller
     {
         private readonly UserManager<User> _userManager;
+        private readonly RoleManager<IdentityRole<int>> _roleManager;
         private readonly SignInManager<User> _signManager;
         private readonly JwtSettings _jwtSettings;
         private readonly IUserSetup _userSetup;
         private readonly IUserLogic _userLogic;
 
         public AccountController(JwtSettings jwtSettings, UserManager<User> userManager,
-            SignInManager<User> signManager, IUserSetup userSetup, IUserLogic userLogic)
+            RoleManager<IdentityRole<int>> roleManager, SignInManager<User> signManager, IUserSetup userSetup,
+            IUserLogic userLogic)
         {
             _jwtSettings = jwtSettings;
             _userManager = userManager;
+            _roleManager = roleManager;
             _signManager = signManager;
             _userSetup = userSetup;
             _userLogic = userLogic;
@@ -41,7 +44,7 @@ namespace Api.Controllers.Api
         
         [Authorize]
         [HttpGet]
-        [Route("amir")]
+        [Route("")]
         [SwaggerOperation("AccountInfo")]
         public async Task<IActionResult> Index()
         {
@@ -56,16 +59,14 @@ namespace Api.Controllers.Api
         [SwaggerOperation("Register")]
         public async Task<IActionResult> Register([FromBody] RegisterViewModel registerViewModel)
         {
-            if (User.Identity.IsAuthenticated)
-            {
-                return BadRequest("Please logout before registering a new user.");
-            }
-            
+            var role = !(await _userLogic.GetAll()).Any() ? RoleEnum.Admin : RoleEnum.User;
+
             var user = new User
             {
                 Name = registerViewModel.Name,
                 Email = registerViewModel.Email,
-                UserName = registerViewModel.Username
+                UserName = registerViewModel.Username,
+                Role = role
             };
 
             // Create user
@@ -73,10 +74,21 @@ namespace Api.Controllers.Api
             {
                 await _userManager.CreateAsync(user, registerViewModel.Password)
             };
+            
+            // Create the role if not exist
+            if (!await _roleManager.RoleExistsAsync(role.ToString()))
+            {
+                identityResults.Add(await _roleManager.CreateAsync(new IdentityRole<int>(role.ToString())));
+            }
+            
+            // Register the user to the role
+            identityResults.Add(await _userManager.AddToRoleAsync(user, role.ToString()));
 
             if (identityResults.All(x => x.Succeeded))
             {
                 await _userSetup.Setup(user.Id);
+                
+                return Ok("Successfully registered!");
             }
 
             return BadRequest(new ErrorViewModel(new[] {"Failed to register!"}
@@ -120,11 +132,33 @@ namespace Api.Controllers.Api
         
         [Authorize]
         [HttpGet]
+        [Route("Role/{userId}/{role}")]
+        [SwaggerOperation("ChangeRole")]
+        public async Task<IActionResult> ChangeRole([FromRoute]int userId, [FromRoute]RoleEnum role)
+        {
+            var result = new List<IdentityResult>();
+            
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            
+            // Remove existing role
+            result.Add(await _userManager.RemoveFromRoleAsync(user, user.Role.ToString()));
+            
+            // Add new role to the user
+            result.Add(await _userManager.AddToRoleAsync(user, role.ToString()));
+
+            // Update user role identifier
+            await _userLogic.Update(userId, x => x.Role = role);
+
+            return Ok(result);
+        }
+
+        [Authorize]
+        [HttpGet]
         [Route("Refresh")]
         [SwaggerOperation("Refresh")]
         public async Task<IActionResult> Refresh()
         {
-            var user = await _userManager.FindByEmailAsync(User.Identity.Name);
+            var user = await _userManager.FindByNameAsync(User.Identity.Name);
                 
             var token = ResolveToken(user);
 

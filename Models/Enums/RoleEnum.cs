@@ -6,8 +6,7 @@ namespace Models.Enums
     [JsonConverter(typeof(StringEnumConverter))]
     public enum RoleEnum
     {
-        Internal = 0,
-        Contractor = 1,
-        Homeowner = 2
+        User = 0,
+        Admin = 1
     }
 }

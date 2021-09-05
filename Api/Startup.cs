@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -19,14 +20,13 @@ using Lamar;
 using LiteDB;
 using Logic.Providers;
 using Logic.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -40,7 +40,6 @@ using MlkPwgen;
 using Models.Constants;
 using Models.Models;
 using Newtonsoft.Json;
-using reCAPTCHA.AspNetCore;
 using StackExchange.Redis;
 using static Dal.Utilities.ConnectionStringUtility;
 
@@ -119,9 +118,17 @@ namespace Api
                 options.Cookie.SecurePolicy = CookieSecurePolicy.None;
             });
 
-            services.AddSwaggerGen(c =>
+            services.AddSwaggerGen(config =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo {Title = "dotnet-template", Version = "v1"});
+                config.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "dotnet-template", Version = "v1", Description = "Basic .NET Core template", License =
+                        new OpenApiLicense
+                        {
+                            Name = "MIT",
+                            Url = new Uri("https://github.com/amir734jj/dotnet-template.git")
+                        }
+                });
 
                 // Set the comments path for the Swagger JSON and UI.
                 var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -129,31 +136,49 @@ namespace Api
 
                 if (File.Exists(xmlPath))
                 {
-                    c.IncludeXmlComments(xmlPath);
+                    config.IncludeXmlComments(xmlPath);
                 }
 
-                c.AddSecurityDefinition("Bearer", // Name the security scheme
+                config.AddSecurityDefinition("Bearer", // Name the security scheme
+                    // We set the scheme type to http since we're using bearer authentication
+                    // The name of the HTTP Authorization scheme to be used in the Authorization header. In this case "bearer".
                     new OpenApiSecurityScheme
                     {
+                        Name = "Authorization",
+                        In = ParameterLocation.Header,
                         Description = "JWT Authorization header using the Bearer scheme.",
-                        Type = SecuritySchemeType.Http, // We set the scheme type to http since we're using bearer authentication
-                        Scheme = "bearer" // The name of the HTTP Authorization scheme to be used in the Authorization header. In this case "bearer".
+                        Type = SecuritySchemeType.Http,
+                        Scheme = "bearer"
                     });
+
+                config.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        }, new List<string>()
+                    }
+                });
             });
 
             services.AddMvc(x =>
                 {
                     x.ModelValidatorProviders.Clear();
 
-                    // Not need to have https
+                    // No need to have https
                     x.RequireHttpsPermanent = false;
 
                     // Exception filter attribute
                     x.Filters.Add<ExceptionFilterAttribute>();
                 }).AddNewtonsoftJson(x =>
-                    {
-                        x.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
-                    })
+                {
+                    x.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+                })
                 .AddRazorPagesOptions(x => x.Conventions.ConfigureFilter(new IgnoreAntiforgeryTokenAttribute()));
 
             services.AddDbContext<EntityDbContext>(opt =>
@@ -171,7 +196,7 @@ namespace Api
                 }
             });
 
-            services.AddIdentity<User, IdentityRole<int>>(x => x.User.RequireUniqueEmail = true)
+            services.AddIdentity<User, IdentityRole<int>>(x => x.User.RequireUniqueEmail = false)
                 .AddEntityFrameworkStores<EntityDbContext>()
                 .AddRoles<IdentityRole<int>>()
                 .AddDefaultTokenProviders();
@@ -205,8 +230,11 @@ namespace Api
                 IdentityModelEventSource.ShowPII = true;
             }
 
-            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                .AddCookie(x => x.Cookie.MaxAge = TimeSpan.FromMinutes(60))
+            services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
                 .AddJwtBearer(config =>
                 {
                     config.RequireHttpsMetadata = false;
@@ -228,10 +256,6 @@ namespace Api
                 config.StreamBufferCapacity = 50;
                 config.EnableDetailedErrors = true;
             });
-            
-            // Re-Captcha config
-            services.Configure<RecaptchaSettings>(_configuration.GetSection("RecaptchaSettings"));
-            services.AddTransient<IRecaptchaService, RecaptchaService>();
 
             services.AddEfRepository<EntityDbContext>(x => x.Profile(Assembly.Load("Dal")));
 
