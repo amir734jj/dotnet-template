@@ -190,8 +190,7 @@ namespace Api
                 else
                 {
                     var postgresConnectionString =
-                        ConnectionStringUrlToPgResource(_configuration.GetValue<string>("DATABASE_URL")
-                                                        ?? throw new Exception("DATABASE_URL is null"));
+                        ConnectionStringUrlToPgResource(_configuration.GetRequiredValue<string>("DATABASE_URL"));
                     opt.UseNpgsql(postgresConnectionString);
                 }
             });
