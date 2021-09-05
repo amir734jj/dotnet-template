@@ -8,6 +8,7 @@ Personal boilerplate of webapp including:
 - JWT server for authentication and authorization
   - controllers for profile and account management
 - Swagger
+- SignalR
 - Repository pattern
 - EntityFramework.Core
   - SQLite for development
