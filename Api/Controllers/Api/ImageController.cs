@@ -21,7 +21,7 @@ namespace Api.Controllers.Api
 
         [HttpPost]
         [Route("upload")]
-        public async Task<IActionResult> ImageUploadBase64([FromForm] UploadViewModel metadata)
+        public async Task<IActionResult> Upload([FromForm] UploadViewModel metadata)
         {
             var response = await _imageUploadLogic.Upload(metadata);
 
@@ -30,7 +30,7 @@ namespace Api.Controllers.Api
 
         [HttpGet]
         [Route("{id}")]
-        public async Task<IActionResult> DownloadImage([FromRoute] Guid id)
+        public async Task<IActionResult> Download([FromRoute] Guid id)
         {
             var result = await _imageUploadLogic.Download(id);
 
