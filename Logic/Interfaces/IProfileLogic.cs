@@ -6,6 +6,8 @@ namespace Logic.Interfaces
 {
     public interface IProfileLogic
     {
-        Task Update(User user, ProfileViewModel profileViewModel);
+        Task<ProfileViewModel> Get(User user);
+        
+        Task Update(User user, ProfileViewModel profile);
     }
 }

@@ -15,9 +15,7 @@ namespace Api.Controllers.Api
     public class ProfileController : Controller
     {
         private readonly UserManager<User> _userManager;
-        
         private readonly IProfileLogic _profileLogic;
-        
         private readonly IUserLogic _userLogic;
 
         public ProfileController(UserManager<User> userManager, IProfileLogic profileLogic, IUserLogic userLogic)
@@ -31,18 +29,18 @@ namespace Api.Controllers.Api
         [Route("")]
         public async Task<IActionResult> Index()
         {
-            var user = await _userManager.FindByEmailAsync(User.Identity.Name);
+            var user = await _userManager.FindByNameAsync(User.Identity.Name);
 
-            var userWithNonNullReferenceProperties = await _userLogic.Get(user.Id);
+            var profile = _profileLogic.Get(user);
             
-            return Ok(new ProfileViewModel(userWithNonNullReferenceProperties));
+            return Ok(profile);
         }
         
         [HttpPost]
         [Route("")]
         public async Task<IActionResult> Update([FromBody] ProfileViewModel profileViewModel)
         {
-            var user = await _userManager.FindByEmailAsync(User.Identity.Name);
+            var user = await _userManager.FindByNameAsync(User.Identity.Name);
 
             await _profileLogic.Update(user, profileViewModel);
 

@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Text.RegularExpressions;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Identity;
+using Models.Enums;
 
 namespace Models.Models
 {
@@ -12,19 +13,10 @@ namespace Models.Models
         public string Name { get; set; }
         
         public virtual DateTimeOffset LastLoginTime { get; set; }  = DateTimeOffset.MinValue;
-
-        public object Obfuscate()
-        {
-            const string pattern = @"(?<=[\w]{1})[\w-\._\+%]*(?=[\w]{1}@)";
-
-            var obfuscatedEmail = Regex.Replace(Email, pattern, m => new string('*', m.Length));
-            
-            return new {Email = obfuscatedEmail, Name};
-        }
-
-        public object ToAnonymousObject()
-        {
-            return new {Email, Name};
-        }
+        
+        public RoleEnum Role { get; set; }
+        
+        [Column(TypeName = "text")]
+        public string Description { get; set; }
     }
 }

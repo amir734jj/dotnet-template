@@ -1,12 +1,13 @@
 using System;
-using System.Collections.Immutable;
+using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Threading.Tasks;
-using Dal.Extensions;
 using Dal.Interfaces;
 using Logic.Interfaces;
 using Microsoft.Extensions.Logging;
 using Models.ViewModels.Config;
+using Newtonsoft.Json;
 using static Models.Constants.GlobalConfigs;
 using static Models.Constants.ApplicationConstants;
 
@@ -14,13 +15,13 @@ namespace Logic.Logic
 {
     public class ConfigLogic : IConfigLogic
     {
-        private readonly IS3Service _s3Service;
+        private readonly IFileService _fileService;
 
         private readonly ILogger<ConfigLogic> _logger;
 
-        public ConfigLogic(IS3Service s3Service, ILogger<ConfigLogic> logger)
+        public ConfigLogic(IFileService fileService, ILogger<ConfigLogic> logger)
         {
-            _s3Service = s3Service;
+            _fileService = fileService;
             _logger = logger;
         }
 
@@ -28,8 +29,13 @@ namespace Logic.Logic
         {
             UpdateGlobalConfigs(globalConfigViewModel);
 
-            var response = await _s3Service.Upload(ConfigFile, globalConfigViewModel.ObjectToByteArray(),
-                ImmutableDictionary.Create<string, string>().Add("Description", "Application config file"));
+            var response = await _fileService.Upload(ConfigFile, ConfigFile, "application/json",
+                new MemoryStream(DefaultEncoding.GetBytes(JsonConvert.SerializeObject(globalConfigViewModel))),
+                new Dictionary<string, string>
+                {
+                    {"Description", "Application config file"}
+                }
+            );
 
             if (response.Status == HttpStatusCode.BadRequest)
             {
@@ -37,27 +43,30 @@ namespace Logic.Logic
             }
         }
 
-        public GlobalConfigViewModel ResolveGlobalConfig()
+        public GlobalConfigViewModel GetResolveGlobalConfig()
         {
             return ToViewModel();
         }
 
         public async Task UpdateGlobalConfig(Func<GlobalConfigViewModel, GlobalConfigViewModel> update)
         {
-            var re = update(ResolveGlobalConfig());
+            var re = update(GetResolveGlobalConfig());
             
             await SetGlobalConfig(re);
         }
 
         public async Task Refresh()
         {
-            var response = await _s3Service.Download(ConfigFile);
+            var response = await _fileService.Download(ConfigFile);
             
             if (response.Status == HttpStatusCode.OK)
             {
                 _logger.LogInformation("Successfully fetched the config from S3");
 
-                UpdateGlobalConfigs(response.Data.Deserialize<GlobalConfigViewModel>());
+                var json = System.Text.Encoding.Default.GetString(response.Data.ToArray());
+                var config = JsonConvert.DeserializeObject<GlobalConfigViewModel>(json);
+                
+                UpdateGlobalConfigs(config);
             }
             else
             {

@@ -9,6 +9,7 @@
 *.min.css
 *.min.js
 *.sqlite
+*.litedb
 
 # User-specific files
 *.suo

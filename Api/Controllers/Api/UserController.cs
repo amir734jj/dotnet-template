@@ -1,23 +1,21 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using Api.Attributes;
 using Logic.Interfaces;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Models.Enums;
 using Models.Models;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Api.Controllers.Api
 {
-    // [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize]
+    [RoleAuthorized(RoleEnum.Admin)]
     [Route("api/[controller]")]
     public class UserController : Controller
     {
         private readonly IUserLogic _userLogic;
-
         private readonly UserManager<User> _userManager;
 
         /// <summary>
@@ -37,9 +35,7 @@ namespace Api.Controllers.Api
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<User>))]
         public async Task<IActionResult> GetAll()
         {
-            var user = await _userManager.FindByEmailAsync(User.Identity.Name);
-
-            var users = (await _userLogic.GetAll()).Select(x => x.Id == user.Id ? x.ToAnonymousObject() : x.Obfuscate());
+            var users = await _userLogic.GetAll();
 
             return Ok(users);
         }

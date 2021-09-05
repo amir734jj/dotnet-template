@@ -14,11 +14,26 @@ namespace Logic.Logic
             _userLogic = userLogic;
         }
 
+
+        public async Task<ProfileViewModel> Get(User user)
+        {
+            return new ProfileViewModel
+            {
+                Email = user.Email,
+                Description = user.Description,
+                Name = user.Name,
+                PhoneNumber = user.PhoneNumber
+            };
+        }
+
         public async Task Update(User user, ProfileViewModel profileViewModel)
         {
             await _userLogic.Update(user.Id, entity =>
             {
                 entity.Name = profileViewModel.Name;
+                entity.Description = profileViewModel.Description;
+                entity.Email = profileViewModel.Email;
+                entity.PhoneNumber = profileViewModel.PhoneNumber;
             });
         }
     }

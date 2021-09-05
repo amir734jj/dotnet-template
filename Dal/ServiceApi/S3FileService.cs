@@ -14,47 +14,36 @@ using Models.ViewModels.S3;
 
 namespace Dal.ServiceApi
 {
-    public class S3Service : IS3Service
+    public class S3FileService : IFileService
     {
         private readonly IAmazonS3 _client;
-        private readonly ILogger<S3Service> _logger;
+        private readonly ILogger<S3FileService> _logger;
         private readonly S3ServiceConfig _s3ServiceConfig;
-        private readonly bool _connected;
-        
-        public S3Service()
-        {
-            _connected = false;
-        }
-        
+
         /// <summary>
         /// Constructor that takes a S3Client and a prefix for all paths
         /// </summary>
         /// <param name="logger"></param>
         /// <param name="client"></param>
         /// <param name="s3ServiceConfig"></param>
-        public S3Service(ILogger<S3Service> logger, IAmazonS3 client, S3ServiceConfig s3ServiceConfig) : this()
+        public S3FileService(ILogger<S3FileService> logger, IAmazonS3 client, S3ServiceConfig s3ServiceConfig)
         {
             _logger = logger;
             _client = client;
             _s3ServiceConfig = s3ServiceConfig;
-            _connected = true;
         }
 
         /// <summary>
         /// Upload a file to an S3, here four files are uploaded in four different ways
         /// </summary>
         /// <param name="fileKey"></param>
+        /// <param name="fileName"></param>
+        /// <param name="contentType"></param>
         /// <param name="data"></param>
         /// <param name="metadata"></param>
         /// <returns></returns>
-        public async Task<SimpleS3Response> Upload(string fileKey, byte[] data, IDictionary<string, string> metadata)
+        public async Task<GenericFileServiceResponse> Upload(string fileKey, string fileName, string contentType, Stream data, IDictionary<string, string> metadata)
         {
-            // Nothing needs to be done ...
-            if (!_connected)
-            {
-                return new SimpleS3Response(HttpStatusCode.BadRequest, "Not connected!");
-            }
-            
             try
             {
                 if (await _client.DoesS3BucketExistAsync(_s3ServiceConfig.BucketName))
@@ -64,7 +53,7 @@ namespace Dal.ServiceApi
                     var fileTransferUtilityRequest = new TransferUtilityUploadRequest
                     {
                         Key = $"{_s3ServiceConfig.Prefix}/{fileKey}",
-                        InputStream = new MemoryStream(data),
+                        InputStream = data,
                         BucketName = _s3ServiceConfig.BucketName,
                         CannedACL = S3CannedACL.PublicRead
                     };
@@ -74,9 +63,12 @@ namespace Dal.ServiceApi
                         fileTransferUtilityRequest.Metadata.Add(key, value);
                     }
 
+                    metadata["Name"] = fileName;
+                    metadata["Content-Type"] = contentType;
+
                     await fileTransferUtility.UploadAsync(fileTransferUtilityRequest);
 
-                    return new SimpleS3Response(HttpStatusCode.OK, "Successfully uploaded to S3");
+                    return new GenericFileServiceResponse(HttpStatusCode.OK, "Successfully uploaded to S3");
                 }
 
                 // Bucket not found
@@ -85,16 +77,16 @@ namespace Dal.ServiceApi
             // Catch specific amazon errors
             catch (AmazonS3Exception e)
             {
-                _logger.LogError(e.AmazonId2, e);
+                _logger.LogError(e, "Failed uploading to S3 with S3 specific exception");
                 
-                return new SimpleS3Response(e.StatusCode, e.Message);
+                return new GenericFileServiceResponse(e.StatusCode, e.Message);
             }
             // Catch other errors
             catch (Exception e)
             {
-                _logger.LogError(e.Message, e);
+                _logger.LogError(e, "Failed uploading to S3 with generic exception");
                 
-                return new SimpleS3Response(HttpStatusCode.BadRequest, e.Message);
+                return new GenericFileServiceResponse(HttpStatusCode.BadRequest, e.Message);
             }
         }
 
@@ -103,14 +95,8 @@ namespace Dal.ServiceApi
         /// </summary>
         /// <param name="keyName"></param>
         /// <returns></returns>
-        public async Task<DownloadS3Response> Download(string keyName)
+        public async Task<DownloadFileServiceResponse> Download(string keyName)
         {
-            // Nothing needs to be done ...
-            if (!_connected)
-            {
-                return new DownloadS3Response(HttpStatusCode.BadRequest, "Not connected!");
-            }
-
             try
             {
                 // Build the request with the bucket name and the keyName (name of the file)
@@ -124,39 +110,67 @@ namespace Dal.ServiceApi
                 await using var responseStream = response.ResponseStream;
                 await using var memoryStream = new MemoryStream();
                 var title = response.Metadata["x-amz-meta-title"];
-                var contentType = response.Headers["Content-Type"];
                 var metadata = response.Metadata.Keys.ToDictionary(x => x, x => response.Metadata[x]);
 
                 // Copy stream to another stream
                 await responseStream.CopyToAsync(memoryStream);
 
-                return new DownloadS3Response(HttpStatusCode.OK, "Successfully downloaded S3 object", memoryStream.ToArray(), metadata, contentType,
-                    title);
+                var fileName = response.Headers["Name"];
+                var contentType = response.Headers["Content-Type"];
+
+                return new DownloadFileServiceResponse(HttpStatusCode.OK,
+                    "Successfully downloaded S3 object",
+                    memoryStream, metadata, contentType, fileName);
             }
             // Catch specific amazon errors
             catch (AmazonS3Exception e)
             {
-                _logger.LogError(e.AmazonId2, e);
+                _logger.LogError(e, "Failed uploading from S3 with S3 specific exception");
                 
-                return new DownloadS3Response(e.StatusCode, e.Message);
+                return new DownloadFileServiceResponse(e.StatusCode, e.Message);
             }
             // Catch other errors
             catch (Exception e)
             {
-                _logger.LogError(e.Message, e);
+                _logger.LogError(e, "Failed downloading from S3 with generic exception");
                 
-                return new DownloadS3Response(HttpStatusCode.BadRequest, e.Message);
+                return new DownloadFileServiceResponse(HttpStatusCode.BadRequest, e.Message);
+            }
+        }
+
+        public async Task<GenericFileServiceResponse> Delete(string keyName)
+        {
+            try
+            {
+                // Build the request with the bucket name and the keyName (name of the file)
+                var request = new DeleteObjectRequest
+                {
+                    BucketName = _s3ServiceConfig.BucketName,
+                    Key = $"{_s3ServiceConfig.Prefix}/{keyName}"
+                };
+
+                var response = await _client.DeleteObjectAsync(request);
+                return new GenericFileServiceResponse(response.HttpStatusCode,
+                    $"Deleting S3 object with key: {keyName}");
+            }
+            // Catch specific amazon errors
+            catch (AmazonS3Exception e)
+            {
+                _logger.LogError(e, "Failed uploading from S3 with S3 specific exception");
+                
+                return new GenericFileServiceResponse(e.StatusCode, e.Message);
+            }
+            // Catch other errors
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Failed downloading from S3 with generic exception");
+                
+                return new GenericFileServiceResponse(HttpStatusCode.BadRequest, e.Message);
             }
         }
 
         public async Task<List<string>> List()
         {
-            // Nothing needs to be done ...
-            if (!_connected)
-            {
-                return new List<string>();
-            }
-            
             var request = new ListObjectsV2Request
             {
                 BucketName = _s3ServiceConfig.BucketName,

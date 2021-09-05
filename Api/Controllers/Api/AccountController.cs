@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using Api.Attributes;
 using Api.Configs;
 using Logic.Interfaces;
 using Microsoft.AspNetCore.Identity;
@@ -14,57 +15,58 @@ using Models.Models;
 using Models.ViewModels.Identities;
 using Swashbuckle.AspNetCore.Annotations;
 using Microsoft.AspNetCore.Authorization;
+using Models.Enums;
 using Models.ViewModels.Api;
 
 namespace Api.Controllers.Api
 {
-    [AllowAnonymous]
     [Route("api/[controller]")]
     public class AccountController : Controller
     {
-        private const string SetupUserTempDataKey = nameof(SetupUserTempDataKey);
-
         private readonly UserManager<User> _userManager;
+        private readonly RoleManager<IdentityRole<int>> _roleManager;
         private readonly SignInManager<User> _signManager;
         private readonly JwtSettings _jwtSettings;
         private readonly IUserSetup _userSetup;
         private readonly IUserLogic _userLogic;
 
         public AccountController(JwtSettings jwtSettings, UserManager<User> userManager,
-            SignInManager<User> signManager, IUserSetup userSetup, IUserLogic userLogic)
+            RoleManager<IdentityRole<int>> roleManager, SignInManager<User> signManager, IUserSetup userSetup,
+            IUserLogic userLogic)
         {
             _jwtSettings = jwtSettings;
             _userManager = userManager;
+            _roleManager = roleManager;
             _signManager = signManager;
             _userSetup = userSetup;
             _userLogic = userLogic;
         }
-
+        
+        [Authorize]
         [HttpGet]
         [Route("")]
         [SwaggerOperation("AccountInfo")]
         public async Task<IActionResult> Index()
         {
-            if (User.Identity.IsAuthenticated)
-            {
-                var user = await _userManager.FindByEmailAsync(User.Identity.Name);
+            var user = await _userManager.FindByNameAsync(User.Identity.Name);
                 
-                return Ok(user);
-            }
-
-            return Ok(new { });
+            return Ok(user);
         }
 
+        [DisallowAuthorized]
         [HttpPost]
         [Route("Register")]
         [SwaggerOperation("Register")]
         public async Task<IActionResult> Register([FromBody] RegisterViewModel registerViewModel)
         {
+            var role = !(await _userLogic.GetAll()).Any() ? RoleEnum.Admin : RoleEnum.User;
+
             var user = new User
             {
                 Name = registerViewModel.Name,
                 Email = registerViewModel.Email,
-                UserName = registerViewModel.Username
+                UserName = registerViewModel.Username,
+                Role = role
             };
 
             // Create user
@@ -72,27 +74,28 @@ namespace Api.Controllers.Api
             {
                 await _userManager.CreateAsync(user, registerViewModel.Password)
             };
+            
+            // Create the role if not exist
+            if (!await _roleManager.RoleExistsAsync(role.ToString()))
+            {
+                identityResults.Add(await _roleManager.CreateAsync(new IdentityRole<int>(role.ToString())));
+            }
+            
+            // Register the user to the role
+            identityResults.Add(await _userManager.AddToRoleAsync(user, role.ToString()));
 
             if (identityResults.All(x => x.Succeeded))
             {
-                return RedirectToAction("Setup", new {userId = user.Id});
+                await _userSetup.Setup(user.Id);
+                
+                return Ok("Successfully registered!");
             }
 
             return BadRequest(new ErrorViewModel(new[] {"Failed to register!"}
                 .Concat(identityResults.SelectMany(x => x.Errors.Select(y => y.Description))).ToArray()));
         }
 
-        [HttpGet]
-        [Route("Setup/{userId}")]
-        [SwaggerOperation("Setup")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Setup([FromRoute] int userId)
-        {
-            await _userSetup.Setup(userId);
-
-            return Ok("Successfully registered and setup user");
-        }
-
+        [DisallowAuthorized]
         [HttpPost]
         [Route("Login")]
         [SwaggerOperation("Login")]
@@ -111,15 +114,9 @@ namespace Api.Controllers.Api
             // Set LastLoginTime
             await _userLogic.Update(user.Id, x => x.LastLoginTime = DateTimeOffset.Now);
 
-            var (token, expires) = ResolveToken(user);
+            var token = ResolveToken(user);
 
-            return Ok(new
-            {
-                token,
-                user.Name,
-                user.Email,
-                expires
-            });
+            return Ok(token);
         }
 
         [Authorize]
@@ -135,21 +132,37 @@ namespace Api.Controllers.Api
         
         [Authorize]
         [HttpGet]
+        [Route("Role/{userId}/{role}")]
+        [SwaggerOperation("ChangeRole")]
+        public async Task<IActionResult> ChangeRole([FromRoute]int userId, [FromRoute]RoleEnum role)
+        {
+            var result = new List<IdentityResult>();
+            
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            
+            // Remove existing role
+            result.Add(await _userManager.RemoveFromRoleAsync(user, user.Role.ToString()));
+            
+            // Add new role to the user
+            result.Add(await _userManager.AddToRoleAsync(user, role.ToString()));
+
+            // Update user role identifier
+            await _userLogic.Update(userId, x => x.Role = role);
+
+            return Ok(result);
+        }
+
+        [Authorize]
+        [HttpGet]
         [Route("Refresh")]
         [SwaggerOperation("Refresh")]
         public async Task<IActionResult> Refresh()
         {
-            var user = await _userManager.FindByEmailAsync(User.Identity.Name);
+            var user = await _userManager.FindByNameAsync(User.Identity.Name);
                 
-            var (token, expires) = ResolveToken(user);
+            var token = ResolveToken(user);
 
-            return Ok(new
-            {
-                token,
-                user.Name,
-                user.Email,
-                expires
-            });
+            return Ok(token);
         }
 
         /// <summary>
@@ -157,13 +170,13 @@ namespace Api.Controllers.Api
         /// </summary>
         /// <param name="user"></param>
         /// <returns></returns>
-        private (string, DateTime) ResolveToken(User user)
+        private string ResolveToken(User user)
         {
             // Generate and issue a JWT token
             var claims = new[]
             {
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.Email),    // use email as name
+                new Claim(ClaimTypes.Name, user.UserName),    // use username as name
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
@@ -181,7 +194,7 @@ namespace Api.Controllers.Api
                 expires: expires,
                 signingCredentials: credentials);
 
-            return (new JwtSecurityTokenHandler().WriteToken(token), expires);
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

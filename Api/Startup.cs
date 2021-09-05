@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -15,16 +16,17 @@ using Dal.ServiceApi;
 using EFCache;
 using EFCache.Redis;
 using EfCoreRepository.Extensions;
+using Lamar;
+using LiteDB;
 using Logic.Providers;
 using Logic.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -38,9 +40,7 @@ using MlkPwgen;
 using Models.Constants;
 using Models.Models;
 using Newtonsoft.Json;
-using reCAPTCHA.AspNetCore;
 using StackExchange.Redis;
-using StructureMap;
 using static Dal.Utilities.ConnectionStringUtility;
 
 namespace Api
@@ -74,19 +74,8 @@ namespace Api
         /// </summary>
         /// <param name="services"></param>
         /// <returns></returns>
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureContainer(ServiceRegistry services)
         {
-            // services.AddMiniProfiler(opt =>
-            // {
-            //     // opt.RouteBasePath = "/profiler";
-            //     opt.ShouldProfile = _ => true;
-            //     opt.ShowControls = true;
-            //     opt.StackMaxLength = short.MaxValue;
-            //     opt.PopupStartHidden = false;
-            //     opt.PopupShowTrivial = true;
-            //     opt.PopupShowTimeWithChildren = true;
-            // });
-
             services.AddHttpsRedirection(options => options.HttpsPort = 443);
 
             // If environment is localhost, then enable CORS policy, otherwise no cross-origin access
@@ -129,9 +118,17 @@ namespace Api
                 options.Cookie.SecurePolicy = CookieSecurePolicy.None;
             });
 
-            services.AddSwaggerGen(c =>
+            services.AddSwaggerGen(config =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo {Title = "dotnet-template", Version = "v1"});
+                config.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "dotnet-template", Version = "v1", Description = "Basic .NET Core template", License =
+                        new OpenApiLicense
+                        {
+                            Name = "MIT",
+                            Url = new Uri("https://github.com/amir734jj/dotnet-template.git")
+                        }
+                });
 
                 // Set the comments path for the Swagger JSON and UI.
                 var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -139,37 +136,49 @@ namespace Api
 
                 if (File.Exists(xmlPath))
                 {
-                    c.IncludeXmlComments(xmlPath);
+                    config.IncludeXmlComments(xmlPath);
                 }
 
-                c.AddSecurityDefinition("Bearer", // Name the security scheme
+                config.AddSecurityDefinition("Bearer", // Name the security scheme
+                    // We set the scheme type to http since we're using bearer authentication
+                    // The name of the HTTP Authorization scheme to be used in the Authorization header. In this case "bearer".
                     new OpenApiSecurityScheme
                     {
+                        Name = "Authorization",
+                        In = ParameterLocation.Header,
                         Description = "JWT Authorization header using the Bearer scheme.",
-                        Type = SecuritySchemeType.Http, // We set the scheme type to http since we're using bearer authentication
-                        Scheme = "bearer" // The name of the HTTP Authorization scheme to be used in the Authorization header. In this case "bearer".
+                        Type = SecuritySchemeType.Http,
+                        Scheme = "bearer"
                     });
+
+                config.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        }, new List<string>()
+                    }
+                });
             });
 
             services.AddMvc(x =>
                 {
                     x.ModelValidatorProviders.Clear();
 
-                    // Not need to have https
+                    // No need to have https
                     x.RequireHttpsPermanent = false;
-
-                    // Allow anonymous for localhost
-                    if (_env.IsDevelopment())
-                    {
-                        x.Filters.Add<AllowAnonymousFilter>();
-                    }
 
                     // Exception filter attribute
                     x.Filters.Add<ExceptionFilterAttribute>();
                 }).AddNewtonsoftJson(x =>
-                    {
-                        x.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
-                    })
+                {
+                    x.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+                })
                 .AddRazorPagesOptions(x => x.Conventions.ConfigureFilter(new IgnoreAntiforgeryTokenAttribute()));
 
             services.AddDbContext<EntityDbContext>(opt =>
@@ -187,7 +196,7 @@ namespace Api
                 }
             });
 
-            services.AddIdentity<User, IdentityRole<int>>(x => x.User.RequireUniqueEmail = true)
+            services.AddIdentity<User, IdentityRole<int>>(x => x.User.RequireUniqueEmail = false)
                 .AddEntityFrameworkStores<EntityDbContext>()
                 .AddRoles<IdentityRole<int>>()
                 .AddDefaultTokenProviders();
@@ -221,8 +230,11 @@ namespace Api
                 IdentityModelEventSource.ShowPII = true;
             }
 
-            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                .AddCookie(x => x.Cookie.MaxAge = TimeSpan.FromMinutes(60))
+            services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
                 .AddJwtBearer(config =>
                 {
                     config.RequireHttpsMetadata = false;
@@ -244,64 +256,51 @@ namespace Api
                 config.StreamBufferCapacity = 50;
                 config.EnableDetailedErrors = true;
             });
-            
-            // Re-Captcha config
-            services.Configure<RecaptchaSettings>(_configuration.GetSection("RecaptchaSettings"));
-            services.AddTransient<IRecaptchaService, RecaptchaService>();
 
             services.AddEfRepository<EntityDbContext>(x => x.Profile(Assembly.Load("Dal")));
 
-            var container = new Container(config =>
+            services.For<JwtSettings>().Use(jwtSetting).Singleton();
+
+            // If environment is localhost then use mock email service
+            if (_env.IsDevelopment())
             {
-                config.For<JwtSettings>().Use(jwtSetting).Singleton();
+                services.For<ILiteDatabase>().Use(new LiteDatabase("file.litedb")).Singleton();
+                services.For<IFileService>().Use<LiteDbFileService>();
+            }
+            else
+            {
+                var (accessKeyId, secretAccessKey, url) = (
+                    _configuration.GetRequiredValue<string>("CLOUDCUBE_ACCESS_KEY_ID"),
+                    _configuration.GetRequiredValue<string>("CLOUDCUBE_SECRET_ACCESS_KEY"),
+                    _configuration.GetRequiredValue<string>("CLOUDCUBE_URL")
+                );
 
-                // If environment is localhost then use mock email service
-                if (_env.IsDevelopment())
-                {
-                    config.For<IS3Service>().Use(new S3Service()).Singleton();
-                }
-                else
-                {
-                    var (accessKeyId, secretAccessKey, url) = (
-                        _configuration.GetRequiredValue<string>("CLOUDCUBE_ACCESS_KEY_ID"),
-                        _configuration.GetRequiredValue<string>("CLOUDCUBE_SECRET_ACCESS_KEY"),
-                        _configuration.GetRequiredValue<string>("CLOUDCUBE_URL")
-                    );
+                var prefix = new Uri(url).Segments.GetValue(1)?.ToString();
+                const string bucketName = "cloud-cube";
 
-                    var prefix = new Uri(url).Segments.GetValue(1)?.ToString();
-                    const string bucketName = "cloud-cube";
+                // Generally bad practice
+                var credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
 
-                    // Generally bad practice
-                    var credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
+                // Create S3 client
+                services.For<IAmazonS3>().Use(_ => new AmazonS3Client(credentials, RegionEndpoint.USEast1));
+                services.For<S3ServiceConfig>().Use(new S3ServiceConfig(bucketName, prefix));
 
-                    // Create S3 client
-                    config.For<IAmazonS3>().Use(() => new AmazonS3Client(credentials, RegionEndpoint.USEast1));
-                    config.For<S3ServiceConfig>().Use(new S3ServiceConfig(bucketName, prefix));
+                services.For<IFileService>().Use(ctx => new S3FileService(
+                    ctx.GetInstance<ILogger<S3FileService>>(),
+                    ctx.GetInstance<IAmazonS3>(),
+                    ctx.GetInstance<S3ServiceConfig>()
+                ));
+            }
 
-                    config.For<IS3Service>().Use(ctx => new S3Service(
-                        ctx.GetInstance<ILogger<S3Service>>(),
-                        ctx.GetInstance<IAmazonS3>(),
-                        ctx.GetInstance<S3ServiceConfig>()
-                    ));
-                }
-
-                // Register stuff in container, using the StructureMap APIs...
-                config.Scan(_ =>
-                {
-                    _.AssemblyContainingType(typeof(Startup));
-                    _.Assembly("Api");
-                    _.Assembly("Logic");
-                    _.Assembly("Dal");
-                    _.WithDefaultConventions();
-                });
-
-                // Populate the container using the service collection
-                config.Populate(services);
+            // Register stuff in container, using the StructureMap APIs...
+            services.Scan(_ =>
+            {
+                _.AssemblyContainingType(typeof(Startup));
+                _.Assembly("Api");
+                _.Assembly("Logic");
+                _.Assembly("Dal");
+                _.WithDefaultConventions();
             });
-
-            container.AssertConfigurationIsValid();
-
-            return container.GetInstance<IServiceProvider>();
         }
 
         /// <summary>
@@ -310,8 +309,6 @@ namespace Api
         /// <param name="app"></param>
         public void Configure(IApplicationBuilder app)
         {
-            //app.UseMiniProfiler();
-
             app.UseCors("CorsPolicy");
 
             app.UseResponseCompression();

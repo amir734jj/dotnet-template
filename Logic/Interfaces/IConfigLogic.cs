@@ -6,7 +6,7 @@ namespace Logic.Interfaces
 {
     public interface IConfigLogic
     {
-        GlobalConfigViewModel ResolveGlobalConfig();
+        GlobalConfigViewModel GetResolveGlobalConfig();
 
         Task UpdateGlobalConfig(Func<GlobalConfigViewModel, GlobalConfigViewModel> update);
 
