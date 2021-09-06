@@ -42,6 +42,15 @@ namespace Api.Controllers.Api
             _userLogic = userLogic;
         }
         
+        [AllowAnonymous]
+        [HttpGet]
+        [Route("IsAuthenticated")]
+        [SwaggerOperation("IsAuthenticated")]
+        public IActionResult IsAuthenticated()
+        {
+            return Ok(User.Identity.IsAuthenticated.ToString().ToLower());
+        }
+        
         [Authorize]
         [HttpGet]
         [Route("")]

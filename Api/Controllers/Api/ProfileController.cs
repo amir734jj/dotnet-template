@@ -31,7 +31,7 @@ namespace Api.Controllers.Api
         {
             var user = await _userManager.FindByNameAsync(User.Identity.Name);
 
-            var profile = _profileLogic.Get(user);
+            var profile = await _profileLogic.Get(user);
             
             return Ok(profile);
         }
