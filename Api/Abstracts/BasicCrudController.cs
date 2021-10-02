@@ -34,6 +34,11 @@ namespace Api.Abstracts
         [SwaggerOperation("Update")]
         public virtual async Task<IActionResult> Update([FromRoute] int id, [FromBody] T instance)
         {
+            if (!await AuthorizationGuard(id))
+            {
+                return BadRequest("Not authorized");
+            }
+
             return Ok(await (await BasicLogic()).Update(id, instance));
         }
 
@@ -42,6 +47,11 @@ namespace Api.Abstracts
         [SwaggerOperation("Delete")]
         public virtual async Task<IActionResult> Delete([FromRoute] int id)
         {
+            if (!await AuthorizationGuard(id))
+            {
+                return BadRequest("Not authorized");
+            }
+            
             return Ok(await (await BasicLogic()).Delete(id));
         }
         
@@ -51,6 +61,12 @@ namespace Api.Abstracts
         public virtual async Task<IActionResult> Save([FromBody] T instance)
         {
             return Ok(await (await BasicLogic()).Save(instance));
+        }
+
+        [NonAction]
+        protected virtual async Task<bool> AuthorizationGuard(int _)
+        {
+            return true;
         }
     }
 }

@@ -1,3 +1,4 @@
+using System.Data.Entity;
 using System.Linq;
 using EfCoreRepository;
 using Models.Models;
@@ -19,7 +20,7 @@ namespace Dal.Profiles
 
         public override IQueryable<User> Include<TQueryable>(TQueryable queryable)
         {
-            return queryable;
+            return queryable.Include(x => x.Blogs);
         }
     }
 }
