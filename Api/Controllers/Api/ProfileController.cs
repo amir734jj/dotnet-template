@@ -44,7 +44,7 @@ namespace Api.Controllers.Api
 
             await _profileLogic.Update(user, profileViewModel);
 
-            return Ok(profileViewModel);
+            return RedirectToAction("Index");
         }
     }
 }

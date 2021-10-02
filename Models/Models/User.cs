@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Identity;
 using Models.Enums;
@@ -18,5 +19,9 @@ namespace Models.Models
         
         [Column(TypeName = "text")]
         public string Description { get; set; }
+
+        public List<Blog> Blogs { get; set; } = new List<Blog>();
+
+        public string Photo { get; set; }
     }
 }

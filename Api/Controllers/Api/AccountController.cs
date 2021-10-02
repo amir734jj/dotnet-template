@@ -29,10 +29,11 @@ namespace Api.Controllers.Api
         private readonly JwtSettings _jwtSettings;
         private readonly IUserSetup _userSetup;
         private readonly IUserLogic _userLogic;
+        private readonly IProfileLogic _profileLogic;
 
         public AccountController(JwtSettings jwtSettings, UserManager<User> userManager,
             RoleManager<IdentityRole<int>> roleManager, SignInManager<User> signManager, IUserSetup userSetup,
-            IUserLogic userLogic)
+            IUserLogic userLogic, IProfileLogic profileLogic)
         {
             _jwtSettings = jwtSettings;
             _userManager = userManager;
@@ -40,6 +41,7 @@ namespace Api.Controllers.Api
             _signManager = signManager;
             _userSetup = userSetup;
             _userLogic = userLogic;
+            _profileLogic = profileLogic;
         }
         
         [AllowAnonymous]
@@ -51,17 +53,6 @@ namespace Api.Controllers.Api
             return Ok(User.Identity.IsAuthenticated.ToString().ToLower());
         }
         
-        [Authorize]
-        [HttpGet]
-        [Route("")]
-        [SwaggerOperation("AccountInfo")]
-        public async Task<IActionResult> Index()
-        {
-            var user = await _userManager.FindByNameAsync(User.Identity.Name);
-                
-            return Ok(user);
-        }
-
         [DisallowAuthorized]
         [HttpPost]
         [Route("Register")]

@@ -14,6 +14,7 @@ namespace Dal.Profiles
             entity.Description = dto.Description;
             entity.PhoneNumber = dto.PhoneNumber;
             entity.LastLoginTime = dto.LastLoginTime;
+            entity.Photo = dto.Photo;
         }
 
         public override IQueryable<User> Include<TQueryable>(TQueryable queryable)

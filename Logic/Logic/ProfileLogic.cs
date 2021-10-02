@@ -22,7 +22,8 @@ namespace Logic.Logic
                 Email = user.Email,
                 Description = user.Description,
                 Name = user.Name,
-                PhoneNumber = user.PhoneNumber
+                PhoneNumber = user.PhoneNumber,
+                Role = user.Role
             };
         }
 

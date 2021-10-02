@@ -1,4 +1,4 @@
-using Models.Models;
+using Models.Enums;
 
 namespace Models.ViewModels.Api
 {
@@ -11,5 +11,7 @@ namespace Models.ViewModels.Api
         public string PhoneNumber { get; set; }
 
         public string Description { get; set; }
+        
+        public RoleEnum Role { get; set; }
     }
 }

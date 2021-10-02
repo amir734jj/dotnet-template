@@ -6,6 +6,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace Api.Abstracts
 {
+    [ApiController]
     public abstract class BasicCrudController<T> : Controller
     {
         [NonAction]

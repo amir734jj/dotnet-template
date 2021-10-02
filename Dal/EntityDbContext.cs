@@ -23,6 +23,13 @@ namespace Dal
             Database.EnsureCreated();
         }
 
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+            
+            builder.ApplyConfigurationsFromAssembly(typeof(EntityDbContext).Assembly);
+        }
+
         /// <summary>
         ///     This is used for DB migration locally
         /// </summary>
