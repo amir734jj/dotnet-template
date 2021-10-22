@@ -153,7 +153,7 @@ namespace Api.Controllers.Api
         }
 
         [Authorize]
-        [HttpGet]
+        [HttpPost]
         [Route("Refresh")]
         [SwaggerOperation("Refresh")]
         public async Task<IActionResult> Refresh()
