@@ -3,39 +3,30 @@ using Logic.Interfaces;
 using Models.Models;
 using Models.ViewModels.Api;
 
-namespace Logic.Logic
+namespace Logic.Logic;
+
+public class ProfileLogic(IUserLogic userLogic) : IProfileLogic
 {
-    public class ProfileLogic : IProfileLogic
+    public async Task<ProfileViewModel> Get(User user)
     {
-        private readonly IUserLogic _userLogic;
-
-        public ProfileLogic(IUserLogic userLogic)
+        return new ProfileViewModel
         {
-            _userLogic = userLogic;
-        }
+            Email = user.Email,
+            Description = user.Description,
+            Name = user.Name,
+            PhoneNumber = user.PhoneNumber,
+            Role = user.Role
+        };
+    }
 
-
-        public async Task<ProfileViewModel> Get(User user)
+    public async Task Update(User user, ProfileViewModel profileViewModel)
+    {
+        await userLogic.Update(user.Id, entity =>
         {
-            return new ProfileViewModel
-            {
-                Email = user.Email,
-                Description = user.Description,
-                Name = user.Name,
-                PhoneNumber = user.PhoneNumber,
-                Role = user.Role
-            };
-        }
-
-        public async Task Update(User user, ProfileViewModel profileViewModel)
-        {
-            await _userLogic.Update(user.Id, entity =>
-            {
-                entity.Name = profileViewModel.Name;
-                entity.Description = profileViewModel.Description;
-                entity.Email = profileViewModel.Email;
-                entity.PhoneNumber = profileViewModel.PhoneNumber;
-            });
-        }
+            entity.Name = profileViewModel.Name;
+            entity.Description = profileViewModel.Description;
+            entity.Email = profileViewModel.Email;
+            entity.PhoneNumber = profileViewModel.PhoneNumber;
+        });
     }
 }

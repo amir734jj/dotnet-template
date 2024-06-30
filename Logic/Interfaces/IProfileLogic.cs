@@ -2,12 +2,11 @@ using System.Threading.Tasks;
 using Models.Models;
 using Models.ViewModels.Api;
 
-namespace Logic.Interfaces
+namespace Logic.Interfaces;
+
+public interface IProfileLogic
 {
-    public interface IProfileLogic
-    {
-        Task<ProfileViewModel> Get(User user);
+    Task<ProfileViewModel> Get(User user);
         
-        Task Update(User user, ProfileViewModel profile);
-    }
+    Task Update(User user, ProfileViewModel profile);
 }

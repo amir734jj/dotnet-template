@@ -5,45 +5,37 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Models.ViewModels.Api;
 
-namespace Api.Controllers.Api
+namespace Api.Controllers.Api;
+
+[Authorize]
+[ApiController]
+[Route("Api/[controller]")]
+public class ImageController(IImageUploadLogic imageUploadLogic) : Controller
 {
-    [Authorize]
-    [ApiController]
-    [Route("Api/[controller]")]
-    public class ImageController : Controller
+    [HttpPost]
+    [Route("upload")]
+    public async Task<IActionResult> Upload([FromForm] UploadViewModel metadata)
     {
-        private readonly IImageUploadLogic _imageUploadLogic;
+        var response = await imageUploadLogic.Upload(metadata);
 
-        public ImageController(IImageUploadLogic imageUploadLogic)
-        {
-            _imageUploadLogic = imageUploadLogic;
-        }
+        return Ok(response);
+    }
 
-        [HttpPost]
-        [Route("upload")]
-        public async Task<IActionResult> Upload([FromForm] UploadViewModel metadata)
-        {
-            var response = await _imageUploadLogic.Upload(metadata);
+    [HttpGet]
+    [Route("{id:guid}")]
+    public async Task<IActionResult> Download([FromRoute] Guid id)
+    {
+        var result = await imageUploadLogic.Download(id);
 
-            return Ok(response);
-        }
+        return File(result.File.OpenReadStream(), result.File.ContentType, result.File.Name);
+    }
 
-        [HttpGet]
-        [Route("{id}")]
-        public async Task<IActionResult> Download([FromRoute] Guid id)
-        {
-            var result = await _imageUploadLogic.Download(id);
+    [HttpDelete]
+    [Route("{id:guid}/delete")]
+    public async Task<IActionResult> Delete([FromRoute] Guid id)
+    {
+        var result = await imageUploadLogic.Delete(id);
 
-            return File(result.File.OpenReadStream(), result.File.ContentType, result.File.Name);
-        }
-
-        [HttpDelete]
-        [Route("{id}/delete")]
-        public async Task<IActionResult> Delete([FromRoute] Guid id)
-        {
-            var result = await _imageUploadLogic.Delete(id);
-
-            return Ok(result);
-        }
+        return Ok(result);
     }
 }

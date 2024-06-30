@@ -1,3 +1,5 @@
+namespace Api.Controllers.Api;
+
 using System.Threading.Tasks;
 using Logic.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -6,45 +8,32 @@ using Microsoft.AspNetCore.Mvc;
 using Models.Models;
 using Models.ViewModels.Api;
 
-namespace Api.Controllers.Api
+[ApiExplorerSettings(IgnoreApi = true)]
+[Authorize]
+[ApiController]
+[Route("Api/[controller]")]
+public class ProfileController(UserManager<User> userManager, IProfileLogic profileLogic)
+    : Controller
 {
-    [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize]
-    [ApiController]
-    [Route("Api/[controller]")]
-    public class ProfileController : Controller
+    [HttpGet]
+    [Route("")]
+    public async Task<IActionResult> Index()
     {
-        private readonly UserManager<User> _userManager;
-        private readonly IProfileLogic _profileLogic;
-        private readonly IUserLogic _userLogic;
+        var user = await userManager.FindByNameAsync(User.Identity!.Name!);
 
-        public ProfileController(UserManager<User> userManager, IProfileLogic profileLogic, IUserLogic userLogic)
-        {
-            _userManager = userManager;
-            _profileLogic = profileLogic;
-            _userLogic = userLogic;
-        }
+        var profile = await profileLogic.Get(user);
 
-        [HttpGet]
-        [Route("")]
-        public async Task<IActionResult> Index()
-        {
-            var user = await _userManager.FindByNameAsync(User.Identity.Name);
+        return Ok(profile);
+    }
 
-            var profile = await _profileLogic.Get(user);
-            
-            return Ok(profile);
-        }
-        
-        [HttpPost]
-        [Route("")]
-        public async Task<IActionResult> Update([FromBody] ProfileViewModel profileViewModel)
-        {
-            var user = await _userManager.FindByNameAsync(User.Identity.Name);
+    [HttpPost]
+    [Route("")]
+    public async Task<IActionResult> Update([FromBody] ProfileViewModel profileViewModel)
+    {
+        var user = await userManager.FindByNameAsync(User.Identity!.Name!);
 
-            await _profileLogic.Update(user, profileViewModel);
+        await profileLogic.Update(user, profileViewModel);
 
-            return RedirectToAction("Index");
-        }
+        return RedirectToAction("Index");
     }
 }

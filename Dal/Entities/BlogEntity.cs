@@ -2,15 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Models.Models;
 
-namespace Dal.Entities
+namespace Dal.Entities;
+
+public class BlogEntity : IEntityTypeConfiguration<Unit>
 {
-    public class BlogEntity : IEntityTypeConfiguration<Blog>
+    public void Configure(EntityTypeBuilder<Unit> builder)
     {
-        public void Configure(EntityTypeBuilder<Blog> builder)
-        {
-            builder.HasOne(x => x.Owner)
-                .WithMany(x => x.Blogs)
-                .OnDelete(DeleteBehavior.Cascade);
-        }
+        builder.HasOne(x => x.Owner)
+            .WithMany(x => x.Blogs)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -1,17 +1,10 @@
-using System.Net;
+﻿using System.Net;
 
-namespace Models.ViewModels.S3
+namespace Models.ViewModels.S3;
+
+public class GenericFileServiceResponse(HttpStatusCode status, string message)
 {
-    public class GenericFileServiceResponse
-    {
-        public HttpStatusCode Status { get; }
-        
-        public string Message { get; }
+    public HttpStatusCode Status { get; } = status;
 
-        public GenericFileServiceResponse(HttpStatusCode status, string message)
-        {
-            Status = status;
-            Message = message;
-        }
-    }
+    public string Message { get; } = message;
 }

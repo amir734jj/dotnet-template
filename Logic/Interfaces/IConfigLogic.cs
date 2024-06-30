@@ -1,15 +1,11 @@
-using System;
 using System.Threading.Tasks;
-using Models.ViewModels.Config;
+using Models.Constants;
 
-namespace Logic.Interfaces
+namespace Logic.Interfaces;
+
+public interface IConfigLogic
 {
-    public interface IConfigLogic
-    {
-        GlobalConfigViewModel GetResolveGlobalConfig();
+    Task<GlobalConfigs> ResolveGlobalConfig();
 
-        Task UpdateGlobalConfig(Func<GlobalConfigViewModel, GlobalConfigViewModel> update);
-
-        Task Refresh();
-    }
+    Task SetGlobalConfig(GlobalConfigs globalConfigs);
 }

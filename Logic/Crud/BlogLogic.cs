@@ -3,28 +3,14 @@ using Logic.Abstracts;
 using Logic.Interfaces;
 using Models.Models;
 
-namespace Logic.Crud
+namespace Logic.Crud;
+
+public class BlogLogic(IEfRepository repository) : BasicLogicAbstract<Unit>, IBlogLogic
 {
-    public class BlogLogic : BasicLogicAbstract<Blog>, IBlogLogic
+    private readonly IBasicCrud<Unit> _blogDal = repository.For<Unit>();
+
+    protected override IBasicCrud<Unit> GetBasicCrudDal()
     {
-        private readonly IBasicCrud<Blog> _blogDal;
-
-        /// <summary>
-        /// Constructor dependency injection
-        /// </summary>
-        /// <param name="repository"></param>
-        public BlogLogic(IEfRepository repository)
-        {
-            _blogDal = repository.For<Blog>();
-        }
-
-        /// <summary>
-        /// Returns DAL
-        /// </summary>
-        /// <returns></returns>
-        protected override IBasicCrud<Blog> GetBasicCrudDal()
-        {
-            return _blogDal;
-        }
+        return _blogDal;
     }
 }

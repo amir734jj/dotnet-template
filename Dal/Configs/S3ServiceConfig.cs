@@ -1,15 +1,8 @@
-namespace Dal.Configs
-{
-    public class S3ServiceConfig
-    {
-        public string BucketName { get; }
-        
-        public string Prefix { get; }
+namespace Dal.Configs;
 
-        public S3ServiceConfig(string bucketName, string prefix)
-        {
-            BucketName = bucketName;
-            Prefix = prefix;
-        }
-    }
+public class S3ServiceConfig(string bucketName, string prefix)
+{
+    public string BucketName { get; } = bucketName;
+
+    public string Prefix { get; } = prefix;
 }

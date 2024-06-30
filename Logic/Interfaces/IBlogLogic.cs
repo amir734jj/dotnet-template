@@ -1,9 +1,8 @@
 using Models.Models;
 
-namespace Logic.Interfaces
+namespace Logic.Interfaces;
+
+public interface IBlogLogic : IBasicLogic<Unit>
 {
-    public interface IBlogLogic : IBasicLogic<Blog>
-    {
         
-    }
 }

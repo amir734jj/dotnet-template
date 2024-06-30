@@ -1,12 +1,12 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Models.Enums
+namespace Models.Enums;
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum RoleEnum
 {
-    [JsonConverter(typeof(StringEnumConverter))]
-    public enum RoleEnum
-    {
-        User = 0,
-        Admin = 1
-    }
+    Tenant = 0,
+    Landlord = 2,
+    Admin = 4
 }

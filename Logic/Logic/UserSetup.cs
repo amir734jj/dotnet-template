@@ -2,20 +2,14 @@ using System.Threading.Tasks;
 using Dal;
 using Logic.Interfaces;
 
-namespace Logic.Logic
+namespace Logic.Logic;
+
+public class UserSetup(EntityDbContext dbContext) : IUserSetup
 {
-    public class UserSetup : IUserSetup
+    private readonly EntityDbContext _dbContext = dbContext;
+
+    public async Task Setup(int userId)
     {
-        private readonly EntityDbContext _dbContext;
 
-        public UserSetup(EntityDbContext dbContext)
-        {
-            _dbContext = dbContext;
-        }
-
-        public async Task Setup(int userId)
-        {
-
-        }
     }
 }

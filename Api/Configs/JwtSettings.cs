@@ -1,13 +1,12 @@
-namespace Api.Configs
+namespace Api.Configs;
+
+public class JwtSettings
 {
-    public class JwtSettings
-    {
-        public string Key { get; set; }
-        
-        public string Issuer { get; set; }
-        
-        public string Audience { get; set; }
-        
-        public int AccessTokenDurationInMinutes { get; set; }
-    }
+    public required string Key { get; set; }
+
+    public required string Issuer { get; init; }
+
+    public required string Audience { get; init; }
+
+    public required int AccessTokenDurationInMinutes { get; init; }
 }
