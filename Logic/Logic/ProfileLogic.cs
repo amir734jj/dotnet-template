@@ -7,16 +7,16 @@ namespace Logic.Logic;
 
 public class ProfileLogic(IUserLogic userLogic) : IProfileLogic
 {
-    public async Task<ProfileViewModel> Get(User user)
+    public Task<ProfileViewModel> Get(User user)
     {
-        return new ProfileViewModel
+        return Task.FromResult(new ProfileViewModel
         {
             Email = user.Email,
             Description = user.Description,
             Name = user.Name,
             PhoneNumber = user.PhoneNumber,
             Role = user.Role
-        };
+        });
     }
 
     public async Task Update(User user, ProfileViewModel profileViewModel)

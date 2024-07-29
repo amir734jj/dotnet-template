@@ -70,8 +70,6 @@ public class Startup
         // Add functionality to inject IOptions<T>
         services.AddOptions();
 
-        services.AddResponseCompression();
-
         services.Configure<JwtSettings>(_configuration.GetSection("JwtSettings"));
 
         services.AddLogging();
@@ -209,8 +207,6 @@ public class Startup
     public void Configure(IApplicationBuilder app)
     {
         app.UseCors("CorsPolicy");
-
-        app.UseResponseCompression();
 
         if (_env.IsDevelopment())
         {

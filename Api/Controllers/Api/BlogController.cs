@@ -22,9 +22,9 @@ public class BlogController(IBlogLogic blogLogic, UserManager<User> userManager,
 
     protected override async Task<bool> AuthorizationGuard(int id)
     {
-        var user = await userManager.FindByNameAsync(User.Identity.Name);
+        var user = await userManager.FindByNameAsync(User.Identity!.Name!);
 
-        var userDetails = await userLogic.Get(user.Id);
+        var userDetails = await userLogic.Get(user!.Id);
 
         return user.Role.HasFlag(RoleEnum.Admin) || userDetails.Blogs.Any(x => x.Id == id);
     }

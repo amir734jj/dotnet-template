@@ -12,7 +12,7 @@ Personal boilerplate of webapp including:
 - Repository pattern
 - EntityFramework.Core
   - SQLite for development
-  - PostgreSQL for production
+  - PostgresSQL for production
 - File storage
   - LiteDB for development
   - S3 for production 
