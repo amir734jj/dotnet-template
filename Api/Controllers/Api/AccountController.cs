@@ -26,7 +26,6 @@ public class AccountController(
     UserManager<User> userManager,
     RoleManager<IdentityRole<int>> roleManager,
     SignInManager<User> signManager,
-    IUserSetup userSetup,
     IUserLogic userLogic)
     : Controller
 {
@@ -72,8 +71,6 @@ public class AccountController(
 
         if (identityResults.All(x => x.Succeeded))
         {
-            await userSetup.Setup(user.Id);
-
             return Ok("Successfully registered!");
         }
 
